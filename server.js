@@ -8,6 +8,7 @@ app.get('/', function(req, res){
 });
 
 app.use('/ot.js', express.static('ot.js'));
+app.use('/libs', express.static('libs'));
 app.use('/node_modules', express.static('node_modules'));
 
 http.listen(3000, function(){
