@@ -1,11 +1,11 @@
 'use strict';
 
 var EventEmitter     = require('events').EventEmitter;
-var TextOperation    = require('./text-operation');
 var WrappedOperation = require('./wrapped-operation');
 var Server           = require('./server');
 var Selection        = require('./selection');
 var util             = require('util');
+var Delta            = require('quill-delta');
 
 function EditorSocketIOServer (document, deltas, docId, mayWrite) {
   EventEmitter.call(this);
@@ -39,7 +39,7 @@ EditorSocketIOServer.prototype.addClient = function (socket) {
   socket
     .join(this.docId)
     .emit('doc', {
-      str: deltaToText(this.document),
+      str:  deltaToText((new Delta()).compose(this.document)),
       revision: this.deltas.length,
       clients: this.users
     })
@@ -78,7 +78,7 @@ EditorSocketIOServer.prototype.onOperation = function (socket, revision, operati
   var wrapped;
   try {
     wrapped = new WrappedOperation(
-      TextOperation.fromJSON(operation),
+      operation,
       selection && Selection.fromJSON(selection)
     );
   } catch (exc) {
@@ -88,12 +88,13 @@ EditorSocketIOServer.prototype.onOperation = function (socket, revision, operati
 
   try {
     var clientId = socket.id;
-    var wrappedPrime = this.receiveOperation(revision, wrapped);
+    var wrappedPrime = wrapped
+    wrappedPrime.wrapped = this.receiveDelta(revision, wrappedPrime.wrapped);
     this.getClient(clientId).selection = wrappedPrime.meta;
     socket.emit('ack');
     socket.broadcast['in'](this.docId).emit(
       'operation', clientId,
-      wrappedPrime.wrapped.toJSON(), wrappedPrime.meta
+      wrappedPrime.wrapped, wrappedPrime.meta
     );
   } catch (exc) {
     console.error(exc);

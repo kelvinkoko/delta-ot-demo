@@ -133,7 +133,7 @@ ot.EditorClient = (function () {
       set_name: function (clientId, name) { self.getClientObject(clientId).setName(name); },
       ack: function () { self.serverAck(); },
       operation: function (operation) {
-        self.applyServer(TextOperation.fromJSON(operation));
+        self.applyFromServer(operation);
       },
       selection: function (clientId, selection) {
         if (selection) {
@@ -244,11 +244,13 @@ ot.EditorClient = (function () {
     var meta = new SelfMeta(selectionBefore, this.selection);
     var operation = new WrappedOperation(textOperation, meta);
 
-    var compose = this.undoManager.undoStack.length > 0 &&
-      inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
+    // var compose = this.undoManager.undoStack.length > 0 &&
+    //   inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
+    // TODO: Always not compose currently, should implement shouldBeComposedWithInverted
+    var compose = false
     var inverseMeta = new SelfMeta(this.selection, selectionBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
-    this.applyClient(textOperation);
+    this.applyFromClient(textOperation);
   };
 
   EditorClient.prototype.updateSelection = function () {
@@ -272,11 +274,11 @@ ot.EditorClient = (function () {
     this.serverAdapter.sendSelection(selection);
   };
 
-  EditorClient.prototype.sendOperation = function (revision, operation) {
-    this.serverAdapter.sendOperation(revision, operation.toJSON(), this.selection);
+  EditorClient.prototype.sendDelta = function (revision, delta) {
+    this.serverAdapter.sendOperation(revision, delta, this.selection);
   };
 
-  EditorClient.prototype.applyOperation = function (operation) {
+  EditorClient.prototype.applyDelta = function (operation) {
     this.editorAdapter.applyOperation(operation);
     this.updateSelection();
     this.undoManager.transform(new WrappedOperation(operation, null));

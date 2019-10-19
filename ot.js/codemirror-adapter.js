@@ -11,6 +11,7 @@ ot.CodeMirrorAdapter = (function (global) {
     this.ignoreNextChange = false;
     this.changeInProgress = false;
     this.selectionChanged = false;
+    this.previousText = cm.getValue();
 
     bind(this, 'onChanges');
     bind(this, 'onChange');
@@ -50,6 +51,14 @@ ot.CodeMirrorAdapter = (function (global) {
   function codemirrorDocLength (doc) {
     return doc.indexFromPos({ line: doc.lastLine(), ch: 0 }) +
       doc.getLine(doc.lastLine()).length;
+  }
+
+  CodeMirrorAdapter.deltaFromTextContent = function (previousText, currentText) {
+    const prevDelta = new Delta().insert(previousText);
+    const currentDelta = new Delta().insert(currentText);
+    const diffDelta = prevDelta.diff(currentDelta);
+    const invertDelta = diffDelta.invert(prevDelta);
+    return [diffDelta, invertDelta];
   }
 
   // Converts a CodeMirror change array (as obtained from the 'changes' event
@@ -138,6 +147,14 @@ ot.CodeMirrorAdapter = (function (global) {
   CodeMirrorAdapter.operationFromCodeMirrorChange =
     CodeMirrorAdapter.operationFromCodeMirrorChanges;
 
+  function deltaToText(delta) {
+    return delta.reduce(function (text, op) {
+      if (!op.insert) throw new TypeError('only `insert` operations can be transformed!');
+      if (typeof op.insert !== 'string') return text + ' ';
+      return text + op.insert;
+    }, '');
+  }
+
   // Apply an operation to a CodeMirror instance.
   CodeMirrorAdapter.applyOperationToCodeMirror = function (operation, cm) {
     cm.operation(function () {
@@ -145,14 +162,14 @@ ot.CodeMirrorAdapter = (function (global) {
       var index = 0; // holds the current index into CodeMirror's content
       for (var i = 0, l = ops.length; i < l; i++) {
         var op = ops[i];
-        if (TextOperation.isRetain(op)) {
-          index += op;
-        } else if (TextOperation.isInsert(op)) {
-          cm.replaceRange(op, cm.posFromIndex(index));
-          index += op.length;
-        } else if (TextOperation.isDelete(op)) {
+        if (op.retain) {
+          index += op.retain;
+        } else if (op.insert) {
+          cm.replaceRange(op.insert, cm.posFromIndex(index));
+          index += op.insert.length;
+        } else if (op.delete) {
           var from = cm.posFromIndex(index);
-          var to   = cm.posFromIndex(index - op);
+          var to   = cm.posFromIndex(index + op.delete);
           cm.replaceRange('', from, to);
         }
       }
@@ -174,10 +191,12 @@ ot.CodeMirrorAdapter = (function (global) {
   };
 
   CodeMirrorAdapter.prototype.onChanges = function (_, changes) {
+    const currentText = this.cm.getValue();
     if (!this.ignoreNextChange) {
-      var pair = CodeMirrorAdapter.operationFromCodeMirrorChanges(changes, this.cm);
+      var pair = CodeMirrorAdapter.deltaFromTextContent(this.previousText, currentText);
       this.trigger('change', pair[0], pair[1]);
     }
+    this.previousText = currentText;
     if (this.selectionChanged) { this.trigger('selectionChange'); }
     this.changeInProgress = false;
     this.ignoreNextChange = false;
