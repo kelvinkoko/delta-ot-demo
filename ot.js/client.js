@@ -1,5 +1,7 @@
 // Modified from the MIT licensed https://github.com/Operational-Transformation/ot.js
-var ot = {};
+if (typeof ot === 'undefined') {
+  var ot = {};
+}
 
 // An ot client keeps only the next expected version number and its current state
 /**
@@ -17,7 +19,7 @@ ot.Client.prototype.setState = function(state) {
 
 /**
  * Call this method when the user changes the document
- * @param {Object} Delta Delta we got from client 
+ * @param {Object} Delta Delta we got from client
  */
 ot.Client.prototype.applyFromClient = function(delta) {
   this.setState(this.state.applyFromClient(this, delta));
@@ -25,7 +27,7 @@ ot.Client.prototype.applyFromClient = function(delta) {
 
 /**
  * Call this method with a new delta from the server
- * @param {Object} Delta Delta we got from server 
+ * @param {Object} Delta Delta we got from server
  */
 ot.Client.prototype.applyFromServer = function(delta) {
   this.version++;
@@ -39,7 +41,7 @@ ot.Client.prototype.serverAck = function() {
   this.version++;
   this.setState(this.state.serverAck(this));
 }
-  
+
 ot.Client.prototype.serverReconnect = function() {
   if (typeof this.state.resend === 'function') { this.state.resend(this); }
 }
@@ -107,7 +109,7 @@ ot.Client.AwaitingConfirm = AwaitingConfirm;
 AwaitingConfirm.prototype.applyFromClient = function(client, delta) {
   // When the user makes an edit, don't send the delta immediately,
   // instead switch to 'AwaitingWithBuffer' state
-  // It will be sent 
+  // It will be sent
   return new AwaitingWithBuffer(this.outstanding, delta);
 }
 
@@ -183,7 +185,7 @@ AwaitingWithBuffer.prototype.applyFromServer = function(client, delta) {
 	var newOutstanding = delta.transform(this.outstanding, false);
 	var newBuffer = delta.transform(this.buffer, false)
 	var toApply = newOutstanding.transform(delta, false)
-	
+
   // The delta should already be well formed for applying
   client.applyDelta(toApply);
   return new AwaitingWithBuffer(newOutstanding, newBuffer);
