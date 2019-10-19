@@ -7,9 +7,9 @@ var Server           = require('./server');
 var Selection        = require('./selection');
 var util             = require('util');
 
-function EditorSocketIOServer (document, operations, docId, mayWrite) {
+function EditorSocketIOServer (document, deltas, docId, mayWrite) {
   EventEmitter.call(this);
-  Server.call(this, document, operations);
+  Server.call(this, document, deltas);
   this.users = {};
   this.docId = docId;
   this.mayWrite = mayWrite || function (_, cb) { cb(true); };
@@ -32,7 +32,7 @@ EditorSocketIOServer.prototype.addClient = function (socket) {
     .join(this.docId)
     .emit('doc', {
       str: this.document,
-      revision: this.operations.length,
+      revision: this.deltas.length,
       clients: this.users
     })
     .on('operation', function (revision, operation, selection) {
