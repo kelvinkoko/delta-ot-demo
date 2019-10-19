@@ -26,12 +26,20 @@ function extend (target, source) {
   }
 }
 
+function deltaToText(delta) {
+  return delta.reduce(function (text, op) {
+    if (!op.insert) throw new TypeError('only `insert` operations can be transformed!');
+    if (typeof op.insert !== 'string') return text + ' ';
+    return text + op.insert;
+  }, '');
+}
+
 EditorSocketIOServer.prototype.addClient = function (socket) {
   var self = this;
   socket
     .join(this.docId)
     .emit('doc', {
-      str: this.document,
+      str: deltaToText(this.document),
       revision: this.deltas.length,
       clients: this.users
     })
