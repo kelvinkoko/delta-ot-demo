@@ -1,3 +1,7 @@
+// Modified from the MIT licensed https://github.com/Operational-Transformation/ot.js
+// This works in a node environment, for client you need Quill and can call: var Delta = Quill.import('delta');
+var Delta = require('quill-delta');
+
 if (typeof ot === 'undefined') {
   var ot = {};
 }
@@ -5,36 +9,48 @@ if (typeof ot === 'undefined') {
 ot.Server = (function (global) {
   'use strict';
 
-  // Constructor. Takes the current document as a string and optionally the array
-  // of all operations.
-  function Server (document, operations) {
-    this.document = document;
-    this.operations = operations || [];
+  /**
+   * Creates a quill-ot server
+   * @param {String} Initial quill document (get with quill.getContents())
+   * @param {Object} Document The current state of the document as a delta
+   */
+  function Server(document, deltas) {
+    this.document = new Delta(document);
+    // Array of quill deltas that show past changes
+    this.deltas = deltas || [];
   }
 
-  // Call this method whenever you receive an operation from a client.
-  Server.prototype.receiveOperation = function (revision, operation) {
-    if (revision < 0 || this.operations.length < revision) {
-      throw new Error("operation revision not in history");
-    }
-    // Find all operations that the client didn't know of when it sent the
-    // operation ...
-    var concurrentOperations = this.operations.slice(revision);
-
-    // ... and transform the operation against all these operations ...
-    var transform = operation.constructor.transform;
-    for (var i = 0; i < concurrentOperations.length; i++) {
-      operation = transform(operation, concurrentOperations[i])[0];
+  /**
+   * Call on receive of a delta from a client.
+   * @param {Number} version The version sent from the client
+   * @param {Object} Delta Delta received from client
+   */
+  Server.prototype.receiveDelta = function(version, delta) {
+    if (version < 0 || this.deltas.length < version) {
+      throw new Error("given delta version not in history");
     }
 
-    // ... and apply that on the document.
-    this.document = operation.apply(this.document);
-    // Store operation in history.
-    this.operations.push(operation);
+    // Find all deltas that the client didn't know of when it sent the
+    // delta ...
+    var concurrentDeltas = this.deltas.slice(version);
 
-    // It's the caller's responsibility to send the operation to all connected
+    var recievedDelta = new Delta(delta);
+
+    // ... and transform the delta against all these deltas ...
+    for (var i = 0; i < concurrentDeltas.length; i++) {
+      var currentConcurrentDelta = new Delta(concurrentDeltas[i]);
+      recievedDelta = currentConcurrentDelta.transform(recievedDelta, true);
+    }
+
+    // ... and apply that on the document
+    this.document = this.document.compose(recievedDelta);
+
+    // Store delta in history.
+    this.deltas.push(recievedDelta);
+
+    // It's the caller's responsibility to send the delta to all connected
     // clients and an acknowledgement to the creator.
-    return operation;
+    return recievedDelta;
   };
 
   return Server;
