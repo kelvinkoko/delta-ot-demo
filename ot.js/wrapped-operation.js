@@ -18,8 +18,9 @@ ot.WrappedOperation = (function (global) {
 
   WrappedOperation.prototype.invert = function () {
     var meta = this.meta;
+    const baseDelta = new Delta().insert(arguments[0])
     return new WrappedOperation(
-      this.wrapped.invert.apply(this.wrapped, arguments),
+      this.wrapped.invert(baseDelta),
       meta && typeof meta === 'object' && typeof meta.invert === 'function' ?
         meta.invert.apply(meta, arguments) : meta
     );
@@ -62,8 +63,12 @@ ot.WrappedOperation = (function (global) {
   }
 
   WrappedOperation.transform = function (a, b) {
-    var transform = a.wrapped.constructor.transform;
-    var pair = transform(a.wrapped, b.wrapped);
+    const aDelta = new Delta(a.wrapped);
+    const bDelta = new Delta(b.wrapped);
+    var pair = [
+      bDelta.transform(aDelta, true),
+      aDelta.transform(bDelta, true)
+    ]
     return [
       new WrappedOperation(pair[0], transformMeta(a.meta, b.wrapped)),
       new WrappedOperation(pair[1], transformMeta(b.meta, a.wrapped))

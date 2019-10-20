@@ -223,7 +223,7 @@ ot.EditorClient = (function () {
     this.editorAdapter.applyOperation(operation.wrapped);
     this.selection = operation.meta.selectionAfter;
     this.editorAdapter.setSelection(this.selection);
-    this.applyClient(operation.wrapped);
+    this.applyFromClient(operation.wrapped);
   };
 
   EditorClient.prototype.undo = function () {

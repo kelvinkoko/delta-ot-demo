@@ -87,6 +87,7 @@ EditorSocketIOServer.prototype.onOperation = function (socket, revision, operati
   }
 
   try {
+    console.log("on Operation %j", wrapped)
     var clientId = socket.id;
     var wrappedPrime = wrapped
     wrappedPrime.wrapped = this.receiveDelta(revision, wrappedPrime.wrapped);
