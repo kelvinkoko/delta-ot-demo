@@ -6,6 +6,19 @@
 
   <script src="libs/browserify-delta.js"></script>
 
+  <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-database.js"></script>
+  <script>
+    // TODO: Replace the following with your app's Firebase project configuration
+    var firebaseConfig = {
+      apiKey: "AIzaSyAreC6qYx7vavjQgEcHp7gg_0qixeaK-HM",
+      authDomain: "stashany-web-client-dev.firebaseapp.com",
+      databaseURL: "https://stashany-web-client-dev.firebaseio.com",
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
   <!-- ot.js -->
   <script src="ot.js/text-operation.js"></script>
   <script src="ot.js/selection.js"></script>
@@ -13,7 +26,7 @@
   <script src="ot.js/undo-manager.js"></script>
   <script src="ot.js/client.js"></script>
   <script src="ot.js/codemirror-adapter.js"></script>
-  <script src="ot.js/socketio-adapter.js"></script>
+  <script src="ot.js/firebase-adapter.js"></script>
   <script src="ot.js/editor-client.js"></script>
 
   <!-- CodeMirror -->
@@ -33,7 +46,7 @@
         lineNumbers: true
       })
       cm.setValue(data.str)
-      var serverAdapter = new ot.SocketIOAdapter(socket)
+      var serverAdapter = new ot.FirebaseAdapter()
       var editorAdapter = new ot.CodeMirrorAdapter(cm)
       var client = new ot.EditorClient(data.revision, data.clients, serverAdapter, editorAdapter)
     })
