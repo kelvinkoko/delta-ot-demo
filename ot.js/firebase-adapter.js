@@ -3,13 +3,16 @@
 ot.FirebaseAdapter = (function() {
   'use strict';
 
-  function FirebaseAdapter(docRef) {
+  function FirebaseAdapter(revision, initContent, docRef) {
     var self = this;
     self.CHECKPOINT_FREQUENCY = 5;
     self.docRef = docRef;
     self.deltasRef = docRef.child('deltas');
     self.checkpointRef = docRef.child('checkpoint');
-    this.monitorDeltas(self.deltasRef);
+    self.revision = revision;
+    self.document = new Delta().insert(initContent);
+
+    self.monitorDeltas(self.deltasRef);
 
     socket
       .on('client_left', function(clientId) {
@@ -33,20 +36,41 @@ ot.FirebaseAdapter = (function() {
       });
   }
 
+  function deltaToText(delta) {
+    return delta.reduce(function (text, op) {
+      if (!op.insert) throw new TypeError('only `insert` operations can be transformed!');
+      if (typeof op.insert !== 'string') return text + ' ';
+      return text + op.insert;
+    }, '');
+  }
+
   FirebaseAdapter.prototype.monitorDeltas = function(deltasRef) {
     var self = this;
     deltasRef.on('child_added', function(data) {
-      const revision = data.key;
+      const receivedRevision = parseInt(data.key);
+      if (receivedRevision <= self.revision) {
+        return;
+      }
       const delta = new Delta(data.val());
-      if (self.sent && revision === self.sent.revision.toString() && _.isEqual(delta, self.sent.delta)) {
-        self.setCheckpoint(revision, )
-        setTimeout(function() {
+      self.document = self.document.compose(delta)
+      if (self.sent && receivedRevision === self.sent.revision) {
+        // TODO: Check author instead of comparing delta
+        if (_.isEqual(delta, self.sent.delta)) {
+          // Received the operation this client sent
+          if (receivedRevision % self.CHECKPOINT_FREQUENCY === 0) {
+            self.setCheckpoint(receivedRevision, deltaToText(self.document));
+          }
+          self.sent = null;
           self.trigger('ack');
-        }, 1)
-      } else {
-        setTimeout(function() {
+        } else {
+          // This revision already used by other client, apply the received
+          // operation and retry sending pending operation
           self.trigger('operation', delta);
-        }, 1)
+          // TODO, name as retry
+          self.trigger('reconnect');
+        }
+      } else {
+        self.trigger('operation', delta);
       }
     });
   };
@@ -58,13 +82,29 @@ ot.FirebaseAdapter = (function() {
     });
   };
 
-  FirebaseAdapter.prototype.sendOperation = function(revision, operation, selection) {
+  FirebaseAdapter.prototype.sendOperation = function(currentRevision, operation, selection) {
     // TODO: update selection
+    const nextRevision = currentRevision + 1;
     this.sent = {
-      revision: revision,
+      revision: nextRevision,
       delta: operation
     }
-    this.deltasRef.child(revision).set(operation);
+
+    function doTransaction(deltasRef, nextRevision, operation) {
+      deltasRef.child(nextRevision).transaction(function(current) {
+        if (current === null) {
+          return operation;
+        }
+      }, function(error, committed, snapshot) {
+        if (error) {
+          console.log('Error in send operation', error);
+        } else if (!committed) {
+          console.log('We aborted the transaction (because already exists).');
+        }
+      }, /*applyLocally=*/false);
+    }
+
+    doTransaction(this.deltasRef, nextRevision, operation);
     // this.socket.emit('operation', revision, operation, selection);
   };
 

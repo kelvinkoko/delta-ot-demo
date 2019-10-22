@@ -42,16 +42,24 @@
   <!-- init client -->
   <script>
     var socket = io()
-    socket.on('doc', function(data) {
+    // Temp doc id 123
+    const docRef = firebase.database().ref('doc/123')
+    docRef.child('checkpoint').once('value', function(snapshot) {
+      const checkpoint = snapshot.val();
+      let revision = 0;
+      let content = "";
+      if (checkpoint) {
+        revision = checkpoint.revision;
+        content = checkpoint.content;
+      }
       var cm = CodeMirror.fromTextArea(document.getElementById('note'), {
         lineNumbers: true
       })
-      cm.setValue(data.str)
-      // Temp doc id 123
-      var serverAdapter = new ot.FirebaseAdapter(firebase.database().ref('doc/123'))
+      cm.setValue(content);
+      var serverAdapter = new ot.FirebaseAdapter(revision, content, docRef)
       var editorAdapter = new ot.CodeMirrorAdapter(cm)
-      var client = new ot.EditorClient(data.revision, data.clients, serverAdapter, editorAdapter)
-    })
+      var client = new ot.EditorClient(revision, [], serverAdapter, editorAdapter)
+    });
   </script>
 </body>
 

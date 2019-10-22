@@ -126,8 +126,9 @@ AwaitingConfirm.prototype.applyFromServer = function(client, delta) {
   //  current document)
 
   // Flase means this.outstanding takes priority over the invoked delta
-  var newOutstanding = this.outstanding.transform(delta, false);
-  client.applyDelta(newOutstanding);
+  var newOutstanding = delta.transform(this.outstanding, true);
+  var toApply = this.outstanding.transform(delta, false);
+  client.applyDelta(toApply);
   return new AwaitingConfirm(newOutstanding);
 }
 
@@ -182,9 +183,10 @@ AwaitingWithBuffer.prototype.applyFromServer = function(client, delta) {
   //
   // * pair1[1]
 
-	var newOutstanding = delta.transform(this.outstanding, false);
-	var newBuffer = delta.transform(this.buffer, false)
-	var toApply = newOutstanding.transform(delta, false)
+	var newOutstanding = delta.transform(this.outstanding, true);
+  var toApply = this.outstanding.transform(delta, false);
+	var newBuffer = toApply.transform(this.buffer, true);
+  toApply = this.buffer.transform(toApply, false);
 
   // The delta should already be well formed for applying
   client.applyDelta(toApply);
