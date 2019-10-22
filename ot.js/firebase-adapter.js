@@ -66,8 +66,7 @@ ot.FirebaseAdapter = (function() {
           // This revision already used by other client, apply the received
           // operation and retry sending pending operation
           self.trigger('operation', delta);
-          // TODO, name as retry
-          self.trigger('reconnect');
+          self.trigger('resend');
         }
       } else {
         self.trigger('operation', delta);

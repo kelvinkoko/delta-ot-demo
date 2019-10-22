@@ -42,7 +42,7 @@ ot.Client.prototype.serverAck = function() {
   this.setState(this.state.serverAck(this));
 }
 
-ot.Client.prototype.serverReconnect = function() {
+ot.Client.prototype.resend = function() {
   if (typeof this.state.resend === 'function') { this.state.resend(this); }
 }
 

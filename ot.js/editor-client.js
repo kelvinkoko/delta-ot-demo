@@ -171,7 +171,7 @@ ot.EditorClient = (function () {
           }
         }
       },
-      reconnect: function () { self.serverReconnect(); }
+      resend: function () { console.log("resned"); self.resend(); }
     });
   }
 
