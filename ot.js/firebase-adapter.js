@@ -8,12 +8,14 @@ ot.FirebaseAdapter = (function() {
     self.CHECKPOINT_FREQUENCY = 5;
     self.userId = userId;
     self.docRef = docRef;
+    self.cursorsRef = docRef.child('cursors');
     self.deltasRef = docRef.child('deltas');
     self.checkpointRef = docRef.child('checkpoint');
     self.revision = revision;
     self.document = new Delta().insert(initContent);
 
     self.monitorDeltas(self.deltasRef);
+    self.monitorCursors(self.cursorsRef);
 
     socket
       .on('client_left', function(clientId) {
@@ -43,6 +45,17 @@ ot.FirebaseAdapter = (function() {
       if (typeof op.insert !== 'string') return text + ' ';
       return text + op.insert;
     }, '');
+  }
+
+  FirebaseAdapter.prototype.monitorCursors = function(cursorsRef) {
+    var self = this;
+    cursorsRef.on('child_changed', function(data) {
+      const clientId = data.key;
+      const cursor = data.val();
+      if (clientId !== self.userId) {
+        self.trigger('selection', clientId, cursor);
+      }
+    });
   }
 
   FirebaseAdapter.prototype.monitorDeltas = function(deltasRef) {
@@ -114,8 +127,8 @@ ot.FirebaseAdapter = (function() {
   };
 
   FirebaseAdapter.prototype.sendSelection = function(selection) {
-    // TODO: update selection
-    // this.socket.emit('selection', selection);
+    this.cursorsRef.child(this.userId).set(selection);
+    this.cursorsRef.child(this.userId).onDisconnect().remove();
   };
 
   FirebaseAdapter.prototype.registerCallbacks = function(cb) {
