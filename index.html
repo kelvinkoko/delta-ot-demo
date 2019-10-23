@@ -19,7 +19,6 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.15/lodash.core.min.js"></script>
   <!-- ot.js -->
   <script src="ot.js/text-operation.js"></script>
   <script src="ot.js/selection.js"></script>
@@ -56,7 +55,8 @@
         lineNumbers: true
       })
       cm.setValue(content);
-      var serverAdapter = new ot.FirebaseAdapter(revision, content, docRef)
+      const userId = docRef.push().key;
+      var serverAdapter = new ot.FirebaseAdapter(userId, revision, content, docRef)
       var editorAdapter = new ot.CodeMirrorAdapter(cm)
       var client = new ot.EditorClient(revision, [], serverAdapter, editorAdapter)
     });

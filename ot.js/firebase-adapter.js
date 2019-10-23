@@ -3,9 +3,10 @@
 ot.FirebaseAdapter = (function() {
   'use strict';
 
-  function FirebaseAdapter(revision, initContent, docRef) {
+  function FirebaseAdapter(userId, revision, initContent, docRef) {
     var self = this;
     self.CHECKPOINT_FREQUENCY = 5;
+    self.userId = userId;
     self.docRef = docRef;
     self.deltasRef = docRef.child('deltas');
     self.checkpointRef = docRef.child('checkpoint');
@@ -37,7 +38,7 @@ ot.FirebaseAdapter = (function() {
   }
 
   function deltaToText(delta) {
-    return delta.reduce(function (text, op) {
+    return delta.reduce(function(text, op) {
       if (!op.insert) throw new TypeError('only `insert` operations can be transformed!');
       if (typeof op.insert !== 'string') return text + ' ';
       return text + op.insert;
@@ -48,15 +49,16 @@ ot.FirebaseAdapter = (function() {
     var self = this;
     deltasRef.on('child_added', function(data) {
       const receivedRevision = parseInt(data.key);
+      const receivedDataPayload = data.val();
       if (receivedRevision <= self.revision) {
         return;
       }
-      const delta = new Delta(data.val());
+      const delta = new Delta(receivedDataPayload.operation);
+      const receivedDeltaUserId = receivedDataPayload.author;
       self.document = self.document.compose(delta)
       if (self.sent && receivedRevision === self.sent.revision) {
-        // TODO: Check author instead of comparing delta
-        if (_.isEqual(delta, self.sent.delta)) {
-          // Received the operation this client sent
+        // Received the operation of this client sent
+        if (receivedDeltaUserId === self.userId) {
           if (receivedRevision % self.CHECKPOINT_FREQUENCY === 0) {
             self.setCheckpoint(receivedRevision, deltaToText(self.document));
           }
@@ -82,6 +84,7 @@ ot.FirebaseAdapter = (function() {
   };
 
   FirebaseAdapter.prototype.sendOperation = function(currentRevision, operation, selection) {
+    var self = this;
     // TODO: update selection
     const nextRevision = currentRevision + 1;
     this.sent = {
@@ -92,7 +95,10 @@ ot.FirebaseAdapter = (function() {
     function doTransaction(deltasRef, nextRevision, operation) {
       deltasRef.child(nextRevision).transaction(function(current) {
         if (current === null) {
-          return operation;
+          return {
+            operation: operation,
+            author: self.userId
+          }
         }
       }, function(error, committed, snapshot) {
         if (error) {
@@ -100,7 +106,7 @@ ot.FirebaseAdapter = (function() {
         } else if (!committed) {
           console.log('We aborted the transaction (because already exists).');
         }
-      }, /*applyLocally=*/false);
+      }, /*applyLocally=*/ false);
     }
 
     doTransaction(this.deltasRef, nextRevision, operation);
