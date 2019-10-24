@@ -6,7 +6,6 @@ ot.EditorClient = (function () {
   var Client = ot.Client;
   var Selection = ot.Selection;
   var UndoManager = ot.UndoManager;
-  var TextOperation = ot.TextOperation;
   var WrappedOperation = ot.WrappedOperation;
 
 
@@ -238,11 +237,10 @@ ot.EditorClient = (function () {
     this.undoManager.performRedo(function (o) { self.applyUnredo(o); });
   };
 
-  EditorClient.prototype.onChange = function (textOperation, inverse) {
+  EditorClient.prototype.onChange = function (operation, inverse) {
     var selectionBefore = this.selection;
     this.updateSelection();
     var meta = new SelfMeta(selectionBefore, this.selection);
-    var operation = new WrappedOperation(textOperation, meta);
 
     // var compose = this.undoManager.undoStack.length > 0 &&
     //   inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
@@ -250,7 +248,7 @@ ot.EditorClient = (function () {
     var compose = false
     var inverseMeta = new SelfMeta(this.selection, selectionBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
-    this.applyFromClient(textOperation);
+    this.applyFromClient(operation);
   };
 
   EditorClient.prototype.updateSelection = function () {
