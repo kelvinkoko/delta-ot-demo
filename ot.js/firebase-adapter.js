@@ -53,6 +53,7 @@ ot.FirebaseAdapter = (function() {
         if (receivedDeltaUserId === self.userId) {
           if (receivedRevision % self.CHECKPOINT_FREQUENCY === 0) {
             self.setCheckpoint(receivedRevision, deltaToText(self.document));
+            self.deleteDeltasOlderThan(receivedRevision);
           }
           self.sent = null;
           self.trigger('ack');
@@ -73,6 +74,10 @@ ot.FirebaseAdapter = (function() {
       revision,
       content
     });
+  };
+
+  FirebaseAdapter.prototype.deleteDeltasOlderThan = function(revision) {
+    this.deltasRef.endAt(revision).remove();
   };
 
   FirebaseAdapter.prototype.sendOperation = function(currentRevision, operation, selection) {
