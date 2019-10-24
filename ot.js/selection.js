@@ -6,8 +6,6 @@ if (typeof ot === 'undefined') {
 ot.Selection = (function (global) {
   'use strict';
 
-  var TextOperation = global.ot ? global.ot.TextOperation : require('./text-operation');
-
   // Range has `anchor` and `head` properties, which are zero-based indices into
   // the document. The `anchor` is the side of the selection that stays fixed,
   // `head` is the side of the selection where the cursor is. When both are
@@ -34,12 +32,12 @@ ot.Selection = (function (global) {
       var newIndex = index;
       var ops = other.ops;
       for (var i = 0, l = other.ops.length; i < l; i++) {
-        if (TextOperation.isRetain(ops[i])) {
-          index -= ops[i];
-        } else if (TextOperation.isInsert(ops[i])) {
-          newIndex += ops[i].length;
+        if (ops[i].retain) {
+          index -= ops[i].retain;
+        } else if (ops[i].insert) {
+          newIndex += ops[i].insert.length;
         } else {
-          newIndex -= Math.min(index, -ops[i]);
+          newIndex -= Math.min(index, -ops[i].delete);
           index += ops[i];
         }
         if (index < 0) { break; }
