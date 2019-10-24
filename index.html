@@ -40,7 +40,6 @@
   <textarea id="note"></textarea>
   <!-- init client -->
   <script>
-    var socket = io()
     // Temp doc id 123
     const docRef = firebase.database().ref('doc/123')
     docRef.child('checkpoint').once('value', function(snapshot) {
